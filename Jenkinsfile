@@ -14,11 +14,11 @@ pipeline {
 	    // JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
     stages{
-        // stage("Cleanup Workspace"){
-        //         steps {
-        //         cleanWs()
-        //         }
-        // }
+        stage("Cleanup Workspace"){
+                steps {
+                cleanWs()
+                }
+        }
 
         stage("Checkout from SCM"){
                 steps {
@@ -84,6 +84,15 @@ pipeline {
 	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
                }
            }
+       }
+
+       stage ('Cleanup Artifacts') {
+           steps {
+               script {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+               }
+          }
        }       
 
 
@@ -98,14 +107,7 @@ pipeline {
 
 
 
-//        stage ('Cleanup Artifacts') {
-//            steps {
-//                script {
-//                     sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
-//                     sh "docker rmi ${IMAGE_NAME}:latest"
-//                }
-//           }
-//        }
+
 
 //        stage("Trigger CD Pipeline") {
 //             steps {
