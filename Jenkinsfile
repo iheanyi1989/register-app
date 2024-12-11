@@ -14,11 +14,11 @@ pipeline {
 	    // JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
     stages{
-        stage("Cleanup Workspace"){
-                steps {
-                cleanWs()
-                }
-        }
+        // stage("Cleanup Workspace"){
+        //         steps {
+        //         cleanWs()
+        //         }
+        // }
 
         stage("Checkout from SCM"){
                 steps {
@@ -33,21 +33,24 @@ pipeline {
 
        }
 
-       stage("Test Application"){
-           steps {
-                 sh "mvn test"
-           }
-       }
-
-        stage("SonarQube Analysis"){
-        steps {
-            script {
-            withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') { 
-                    sh "mvn sonar:sonar"
-                     }
-                }	
+        stage("Test Application") {
+            parallel {
+                stage("Unit Tests") {
+                    steps {
+                        sh "mvn test"
+                    }
+                }
+                
+                stage("SonarQube Analysis") {
+                    steps {
+                        script {
+                            withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') { 
+                                sh "mvn sonar:sonar"
+                            }
+                        }
+                    }
+                }
             }
-
         }
 
        stage("Quality Gate"){
@@ -75,6 +78,14 @@ pipeline {
 
        }
 
+       stage("Trivy Scan") {
+           steps {
+               script {
+	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+               }
+           }
+       }       
+
 
     }
 }
@@ -85,13 +96,7 @@ pipeline {
 
 
 
-//        stage("Trivy Scan") {
-//            steps {
-//                script {
-// 	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ashfaque9x/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
-//                }
-//            }
-//        }
+
 
 //        stage ('Cleanup Artifacts') {
 //            steps {
