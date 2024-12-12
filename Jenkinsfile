@@ -20,6 +20,15 @@ pipeline {
                 }
         }
 
+       stage ('Cleanup Artifacts') {
+           steps {
+               script {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+               }
+          }
+       }
+
         stage("Checkout from SCM"){
                 steps {
                     git branch: 'main', credentialsId: 'github', url: 'https://github.com/iheanyi1989/register-app'
@@ -78,44 +87,44 @@ pipeline {
 
        }
 
-    //    stage("Trivy Scan") {
-    //        steps {
-    //            script {
-	//             sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
-    //            }
-    //        }
-    //    }
+       stage("Trivy Scan") {
+           steps {
+               script {
+	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+               }
+           }
+       }
 
-        stage("Trivy Scan") {
-            steps {
-                script {
-                    sh '''
-                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \\
-                        -v $WORKSPACE:/root/.cache/ \\
-                        aquasec/trivy image --format table \\
-                        -o /root/.cache/trivy-image-report.txt \\
-                        --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL \\
-                        iheanyi1989/register-app-pipeline:latest
-                    '''
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-image-report.txt'
-                    publishHTML target: [
-                        allowMissing: false, 
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: './',
-                        reportFiles: 'trivy-image-report.txt',
-                        reportName: 'Trivy Scan Report'
-                    ]
-                }
-                failure {
-                    error "Trivy scan failed due to HIGH/CRITICAL vulnerabilities found"
-                }
-            }
-        }
+        // stage("Trivy Scan") {
+        //     steps {
+        //         script {
+        //             sh '''
+        //                 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \\
+        //                 -v $WORKSPACE:/root/.cache/ \\
+        //                 aquasec/trivy image --format table \\
+        //                 -o /root/.cache/trivy-image-report.txt \\
+        //                 --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL \\
+        //                 iheanyi1989/register-app-pipeline:latest
+        //             '''
+        //         }
+        //     }
+        //     post {
+        //         always {
+        //             archiveArtifacts artifacts: 'trivy-image-report.txt'
+        //             publishHTML target: [
+        //                 allowMissing: false, 
+        //                 alwaysLinkToLastBuild: true,
+        //                 keepAll: true,
+        //                 reportDir: './',
+        //                 reportFiles: 'trivy-image-report.txt',
+        //                 reportName: 'Trivy Scan Report'
+        //             ]
+        //         }
+        //         failure {
+        //             error "Trivy scan failed due to HIGH/CRITICAL vulnerabilities found"
+        //         }
+        //     }
+        // }
 
        stage ('Cleanup Artifacts') {
            steps {
