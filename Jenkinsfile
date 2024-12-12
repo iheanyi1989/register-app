@@ -1,46 +1,48 @@
 pipeline {
     agent { label 'jenkins-agent' }
+    
     tools {
         jdk 'java17'
         maven 'Maven3'
     }
+    
     environment {
-	    APP_NAME = "register-app-pipeline"
-            RELEASE = "1.0.0"
-            DOCKER_USER = "iheanyi1989"
-            DOCKER_PASS = 'dockerhub'
-            IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
-            IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-	        JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
+        APP_NAME = "register-app-pipeline"
+        RELEASE = "1.0.0"
+        DOCKER_USER = "iheanyi1989"
+        DOCKER_PASS = 'dockerhub'
+        IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+        IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+        JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
-    stages{
-        stage("Cleanup Workspace"){
-                steps {
+    
+    stages {
+        stage("Cleanup Workspace") {
+            steps {
                 cleanWs()
-                }
+            }
         }
 
-       stage ('Cleanup Artifacts') {
-           steps {
-               script {
+        stage ('Cleanup Artifacts') {
+            steps {
+                script {
                     sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
                     sh "docker rmi ${IMAGE_NAME}:latest"
-               }
-          }
-       }
-
-        stage("Checkout from SCM"){
-                steps {
-                    git branch: 'main', credentialsId: 'github', url: 'https://github.com/iheanyi1989/register-app'
                 }
+            }
         }
 
-        stage("Build Application"){
+        stage("Checkout from SCM") {
+            steps {
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/iheanyi1989/register-app'
+            }
+        }
+
+        stage("Build Application") {
             steps {
                 sh "mvn clean package"
             }
-
-       }
+        }
 
         stage("Test Application") {
             parallel {
@@ -62,14 +64,14 @@ pipeline {
             }
         }
 
-    //    stage("Quality Gate"){
-    //        steps {
-    //            script {
-    //                 waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
-    //             }	
-    //         }
-
-    //     }
+        // Quality Gate stage is commented out
+        //    stage("Quality Gate"){
+        //        steps {
+        //            script {
+        //                 waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
+        //             }	
+        //         }
+        //     }
 
         stage("Build & Push Docker Image") {
             steps {
@@ -84,17 +86,17 @@ pipeline {
                     }
                 }
             }
+        }
 
-       }
+        stage("Trivy Scan") {
+            steps {
+                script {
+                    sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+                }
+            }
+        }
 
-       stage("Trivy Scan") {
-           steps {
-               script {
-	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image iheanyi1989/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
-               }
-           }
-       }
-
+        // Alternative Trivy Scan stage is commented out
         // stage("Trivy Scan") {
         //     steps {
         //         script {
@@ -129,8 +131,8 @@ pipeline {
        stage ('Cleanup Artifacts') {
            steps {
                script {
-                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker rmi ${IMAGE_NAME}:latest"
+                   sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                   sh "docker rmi ${IMAGE_NAME}:latest" 
                }
           }
        }
@@ -142,32 +144,18 @@ pipeline {
                 }
             }
        }
-    }       
+   }
 
+    post {
+        failure {
+            emailext body: '''${SCRIPT, template="groovy-html.template"}''', 
+                subject: "${env.JOB_NAME} - Build # ${env.BUILD_NUMBER} - Failed", 
+                mimeType: 'text/html',to: "ioncloudjourney@gmail.com"
+        }
+        success {
+            emailext body: '''${SCRIPT, template="groovy-html.template"}''', 
+                subject: "${env.JOB_NAME} - Build # ${env.BUILD_NUMBER} - Successful", 
+                mimeType: 'text/html',to: "ioncloudjourney@gmail.com"
+        }      
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-//     post {
-//        failure {
-//              emailext body: '''${SCRIPT, template="groovy-html.template"}''', 
-//                       subject: "${env.JOB_NAME} - Build # ${env.BUILD_NUMBER} - Failed", 
-//                       mimeType: 'text/html',to: "ashfaque.s510@gmail.com"
-//       }
-//       success {
-//             emailext body: '''${SCRIPT, template="groovy-html.template"}''', 
-//                      subject: "${env.JOB_NAME} - Build # ${env.BUILD_NUMBER} - Successful", 
-//                      mimeType: 'text/html',to: "ashfaque.s510@gmail.com"
-//       }      
-//    }
-// }
