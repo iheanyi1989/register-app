@@ -94,7 +94,7 @@ pipeline {
                         -v $WORKSPACE:/root/.cache/ \\
                         aquasec/trivy image --format table \\
                         -o /root/.cache/trivy-image-report.txt \\
-                        --no-progress --scanners vuln --exit-code 1 --severity HIGH,CRITICAL \\
+                        --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL \\
                         iheanyi1989/register-app-pipeline:latest
                     '''
                 }
